@@ -5,8 +5,10 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
+import { AdminKeyGuard } from './guards/admin-key.guard';
 
 @Controller('users')
 export class UsersController {
@@ -23,11 +25,13 @@ export class UsersController {
   }
 
   @Patch(':id/block')
+  @UseGuards(AdminKeyGuard)
   blockUser(@Param('id') id: string) {
     return this.usersService.blockUser(id);
   }
 
   @Patch(':id/unblock')
+  @UseGuards(AdminKeyGuard)
   unblockUser(@Param('id') id: string) {
     return this.usersService.unblockUser(id);
   }
