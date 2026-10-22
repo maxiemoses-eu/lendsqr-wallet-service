@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -13,5 +20,15 @@ export class UsersController {
   @Get(':id')
   getUser(@Param('id') id: string) {
     return this.usersService.getUser(id);
+  }
+
+  @Patch(':id/block')
+  blockUser(@Param('id') id: string) {
+    return this.usersService.blockUser(id);
+  }
+
+  @Patch(':id/unblock')
+  unblockUser(@Param('id') id: string) {
+    return this.usersService.unblockUser(id);
   }
 }

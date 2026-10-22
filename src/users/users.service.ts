@@ -76,4 +76,32 @@ export class UsersService {
 
     return { ...user, wallets };
   }
+
+  async setBlockedStatus(userId: string, isBlocked: boolean) {
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!uuidPattern.test(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    const [user] = await this.db('users')
+      .where({ id: userId })
+      .update({ is_blocked: isBlocked })
+      .returning(['id', 'name', 'email', 'is_blocked']);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    return user;
+  }
+
+  async blockUser(userId: string) {
+    return this.setBlockedStatus(userId, true);
+  }
+
+  async unblockUser(userId: string) {
+    return this.setBlockedStatus(userId, false);
+  }
 }
