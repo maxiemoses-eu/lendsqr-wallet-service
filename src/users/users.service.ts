@@ -104,4 +104,24 @@ export class UsersService {
   async unblockUser(userId: string) {
     return this.setBlockedStatus(userId, false);
   }
+
+  async setBlacklistStatus(userId: string, isBlacklisted: boolean) {
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (!uuidPattern.test(userId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    const [user] = await this.db('users')
+      .where({ id: userId })
+      .update({ is_blacklisted: isBlacklisted })
+      .returning(['id', 'name', 'email', 'is_blacklisted']);
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    return user;
+  }
 }
