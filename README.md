@@ -1,126 +1,246 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Lendsqr Wallet Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A REST API for user accounts, NGN wallets, and wallet-to-wallet transfers, built with NestJS, TypeScript, PostgreSQL, and Knex.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Live API:** https://lendsqr-wallet-service-7b9c.onrender.com  
+**Repository:** https://github.com/maxiemoses-eu/lendsqr-wallet-service
 
-## Description
+## Features
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Create a user and an associated NGN wallet.
+- Retrieve user and wallet details.
+- Block and unblock user accounts.
+- Transfer funds between wallets.
+- Validate wallet status, account status, currency, and available balance.
+- Prevent negative balances using database constraints and transactional balance updates.
+- Handle concurrent transfers using database transactions and row-level wallet locks.
+- Protect against duplicate transfer requests with idempotency keys.
+- Reject reuse of an idempotency key with different transfer details.
+- Store monetary values as integer kobo to avoid floating-point arithmetic errors.
 
-## Project setup
+## Technology stack
+
+- Node.js and TypeScript
+- NestJS
+- PostgreSQL
+- Knex.js
+- Jest
+- Render for application hosting
+- Neon for managed PostgreSQL
+
+## Architecture
+
+The application is organized into modules:
+
+- **Users:** user creation, user lookup, and account status management.
+- **Wallets:** wallet lookup and wallet status information.
+- **Transfers:** validation, idempotency, balance checks, and transactional transfers.
+- **Database:** PostgreSQL connection configuration and schema migrations.
+
+A transfer locks the participating wallets in a consistent order, validates the transaction, updates both balances, and records the completed transfer within a database transaction. If a validation or database operation fails, the transaction is rolled back.
+
+## Prerequisites
+
+- Node.js and npm
+- PostgreSQL, either locally or through a managed provider
+
+## Local setup
+
+Clone the repository:
 
 ```bash
-$ npm install
+git clone https://github.com/maxiemoses-eu/lendsqr-wallet-service.git
+cd lendsqr-wallet-service
+npm install
 ```
 
-## Compile and run the project
+Create your local environment file:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
 ```
 
-## Run tests
+Configure the database settings in `.env`:
+
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+DB_NAME=lendsqr_wallet
+
+DATABASE_URL=
+DATABASE_SSL=false
+
+ADJUTOR_API_KEY=
+ADJUTOR_BASE_URL=
+```
+
+Use either the local PostgreSQL settings or a managed database connection URL, as supported by the database configuration. Do not commit `.env` or expose database credentials.
+
+Run the database migrations:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run migrate
 ```
+
+Build and start the application:
+
+```bash
+npm run build
+npm run start:prod
+```
+
+The application listens on port `3000` by default and uses the `PORT` environment variable when provided by the hosting platform.
+
+For development:
+
+```bash
+npm run start:dev
+```
+
+## API reference
+
+Base URL:
+
+```text
+https://lendsqr-wallet-service-7b9c.onrender.com
+```
+
+### 1. Create a user
+
+`POST /users`
+
+Request body:
+
+```json
+{
+  "name": "Example User",
+  "email": "example@example.com"
+}
+```
+
+The service creates the user and an associated NGN wallet. Email addresses must be unique.
+
+### 2. Retrieve a user
+
+`GET /users/:id`
+
+Returns the user, account status, and associated wallet details.
+
+### 3. Block an account
+
+`PATCH /users/:id/block`
+
+Sets the user's blocked status. Transfers involving a blocked user are rejected.
+
+### 4. Unblock an account
+
+`PATCH /users/:id/unblock`
+
+Clears the user's blocked status.
+
+### 5. Retrieve a wallet
+
+`GET /wallets/:id`
+
+Returns wallet details, including the owner, currency, balance, and relevant account status.
+
+Balances are returned in kobo. Divide by 100 to obtain the equivalent amount in naira.
+
+### 6. Transfer funds
+
+`POST /transfers`
+
+Required header:
+
+```text
+Idempotency-Key: a-unique-request-key
+```
+
+Request body:
+
+```json
+{
+  "fromWalletId": "SOURCE-WALLET-UUID",
+  "toWalletId": "DESTINATION-WALLET-UUID",
+  "amountKobo": 10000
+}
+```
+
+`amountKobo` is a positive integer. For example, `10000` represents ₦100.
+
+The transfer endpoint checks that:
+
+- Both wallets exist and are active.
+- The source and destination wallets are different.
+- Both wallets use the same currency.
+- Neither account is blocked or marked as blacklisted.
+- The source wallet has sufficient funds.
+- The idempotency key has not been used for a different request.
+
+A successful transfer returns the transfer record and its status.
+
+## Idempotency and concurrency
+
+Every transfer request must include an idempotency key.
+
+- Repeating a request with the same key and the same transfer details returns the existing transfer instead of executing it again.
+- Reusing a key with different transfer details returns a conflict response.
+- Wallet rows are locked during the transfer transaction to help prevent concurrent requests from spending the same available funds.
+- A database constraint prevents negative wallet balances.
+- A unique database constraint protects transfer idempotency keys.
+
+These controls are designed to preserve balance consistency and prevent duplicate transfers.
+
+## Error handling
+
+The API uses HTTP status codes to communicate request outcomes. Examples verified against the deployed service include:
+
+| Scenario | Status |
+|---|---:|
+| Successful transfer | 201 |
+| Duplicate key with different transfer details | 409 |
+| Insufficient wallet balance | 400 |
+| Transfer from a blocked account | 403 |
+| Transfer from a blacklisted account | 403 |
+
+Validation and other errors may return additional status codes depending on the request.
+
+## Testing
+
+Run the test suite:
+
+```bash
+npm test -- --runInBand
+```
+
+Run the build:
+
+```bash
+npm run build
+```
+
+The current automated unit tests cover basic transfer validation, including invalid wallet identifiers, identical source and destination wallets, invalid amounts, and missing idempotency keys.
+
+Additional manual tests against the deployed API verified successful transfers, duplicate-request handling, insufficient funds, blocked-account rejection, and blacklisted-account rejection. Wallet balances were also checked directly in PostgreSQL.
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+The service is hosted on Render and uses Neon PostgreSQL.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Live URL:
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+https://lendsqr-wallet-service-7b9c.onrender.com
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The application uses environment variables for database configuration and the hosting platform's assigned port. Database schema changes are managed through Knex migrations.
 
-## Observability
+## Known limitations and security considerations
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-This project is already instrumented. To connect it, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It writes the app key and secret into `.env` and makes every `nest start` script (`start`, `start:dev`, `start:debug`) load it. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand: create an application and an API key at [observe.nestjs.com](https://observe.nestjs.com), and set the pair as `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment the app runs in.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- **Adjutor/Karma integration:** The current implementation uses a database blacklist flag to enforce transfer restrictions. A live request to the Adjutor/Karma API has not been verified. A production integration requires an authorized API key, documented provider behaviour, appropriate error handling, and a clearly defined policy for unavailable provider responses.
+- **Account-management authorization:** The block and unblock endpoints currently do not enforce authentication or authorization. They must be protected with appropriate access controls before use in a real financial environment.
+- **Production hardening:** Further work is required around authentication, authorization, audit logging, rate limiting, monitoring, and security review before this service can be considered ready for real financial transactions.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project was created as a technical assessment. No separate project license has been specified.
